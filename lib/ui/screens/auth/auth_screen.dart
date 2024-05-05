@@ -55,12 +55,12 @@ class _AuthScreenState extends State<AuthScreen> {
                     padding: const EdgeInsets.all(8.0),
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(COLOR_PRIMARY),
+                        backgroundColor: COLOR_PRIMARY,
                         padding: const EdgeInsets.only(top: 12, bottom: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25.0),
                           side: BorderSide(
-                            color: Color(COLOR_PRIMARY),
+                            color: COLOR_PRIMARY,
                           ),
                         ),
                       ),
@@ -98,12 +98,12 @@ class _AuthScreenState extends State<AuthScreen> {
                     padding: const EdgeInsets.all(8.0),
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(COLOR_PRIMARY),
+                        backgroundColor: COLOR_PRIMARY,
                         padding: const EdgeInsets.only(top: 12, bottom: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25.0),
                           side: BorderSide(
-                            color: Color(COLOR_PRIMARY),
+                            color: COLOR_PRIMARY,
                           ),
                         ),
                       ),

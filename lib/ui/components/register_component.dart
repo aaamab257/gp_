@@ -23,6 +23,7 @@ class _SignupComponentState extends State<SignupComponent> {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   FirebaseFirestore users = FirebaseFirestore.instance;
   bool isActive = false;
+  bool isLoading = false;
 
   Future<void> register(
       String email, String pass, String nationalId, String name) async {
@@ -37,9 +38,11 @@ class _SignupComponentState extends State<SignupComponent> {
           'nationalId': nationalId,
           'isActive': isActive
         }).then((value) => {
+              setState(() {
+                isLoading = false;
+              }),
               Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                      builder: (context) => const AuthScreen()),
+                  MaterialPageRoute(builder: (context) => const AuthScreen()),
                   (Route<dynamic> route) => false)
             });
       }
@@ -58,7 +61,7 @@ class _SignupComponentState extends State<SignupComponent> {
             child: Text(
               'Register',
               style: TextStyle(
-                  color: Color(COLOR_PRIMARY),
+                  color: COLOR_PRIMARY,
                   fontSize: 25.0,
                   fontWeight: FontWeight.bold),
             ),
@@ -74,14 +77,14 @@ class _SignupComponentState extends State<SignupComponent> {
                   controller: _nameController,
                   style: const TextStyle(fontSize: 18.0),
                   keyboardType: TextInputType.text,
-                  cursorColor: Color(COLOR_PRIMARY),
+                  cursorColor: COLOR_PRIMARY,
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.only(left: 16, right: 16),
                     hintText: 'Full name',
                     focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(25.0),
-                        borderSide: BorderSide(
-                            color: Color(COLOR_PRIMARY), width: 2.0)),
+                        borderSide:
+                            BorderSide(color: COLOR_PRIMARY, width: 2.0)),
                     errorBorder: OutlineInputBorder(
                       borderSide: BorderSide(
                           color: Theme.of(context).colorScheme.error),
@@ -111,14 +114,14 @@ class _SignupComponentState extends State<SignupComponent> {
                   maxLength: 14,
                   style: const TextStyle(fontSize: 18.0),
                   keyboardType: TextInputType.number,
-                  cursorColor: Color(COLOR_PRIMARY),
+                  cursorColor: COLOR_PRIMARY,
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.only(left: 16, right: 16),
                     hintText: 'National Id',
                     focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(25.0),
-                        borderSide: BorderSide(
-                            color: Color(COLOR_PRIMARY), width: 2.0)),
+                        borderSide:
+                            BorderSide(color: COLOR_PRIMARY, width: 2.0)),
                     errorBorder: OutlineInputBorder(
                       borderSide: BorderSide(
                           color: Theme.of(context).colorScheme.error),
@@ -148,14 +151,14 @@ class _SignupComponentState extends State<SignupComponent> {
                   controller: _emailController,
                   style: const TextStyle(fontSize: 18.0),
                   keyboardType: TextInputType.emailAddress,
-                  cursorColor: Color(COLOR_PRIMARY),
+                  cursorColor: COLOR_PRIMARY,
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.only(left: 16, right: 16),
                     hintText: 'Email Address',
                     focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(25.0),
-                        borderSide: BorderSide(
-                            color: Color(COLOR_PRIMARY), width: 2.0)),
+                        borderSide:
+                            BorderSide(color: COLOR_PRIMARY, width: 2.0)),
                     errorBorder: OutlineInputBorder(
                       borderSide: BorderSide(
                           color: Theme.of(context).colorScheme.error),
@@ -188,14 +191,14 @@ class _SignupComponentState extends State<SignupComponent> {
                   },
                   textInputAction: TextInputAction.done,
                   style: const TextStyle(fontSize: 18.0),
-                  cursorColor: Color(COLOR_PRIMARY),
+                  cursorColor: COLOR_PRIMARY,
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.only(left: 16, right: 16),
                     hintText: 'Password',
                     focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(25.0),
-                        borderSide: BorderSide(
-                            color: Color(COLOR_PRIMARY), width: 2.0)),
+                        borderSide:
+                            BorderSide(color: COLOR_PRIMARY, width: 2.0)),
                     errorBorder: OutlineInputBorder(
                       borderSide: BorderSide(
                           color: Theme.of(context).colorScheme.error),
@@ -219,24 +222,46 @@ class _SignupComponentState extends State<SignupComponent> {
               constraints: const BoxConstraints(minWidth: double.infinity),
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(COLOR_PRIMARY),
+                  backgroundColor: COLOR_PRIMARY,
                   padding: const EdgeInsets.only(top: 12, bottom: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25.0),
                     side: BorderSide(
-                      color: Color(COLOR_PRIMARY),
+                      color: COLOR_PRIMARY,
                     ),
                   ),
                 ),
-                child: const Text(
-                  'Register',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+                child: isLoading
+                    ? const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Loading...',
+                            style: TextStyle(
+                              fontSize: 20,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(
+                            width: 10,
+                          ),
+                          CircularProgressIndicator(
+                            color: Colors.white,
+                          ),
+                        ],
+                      )
+                    : const Text(
+                        'Register',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
                 onPressed: () async {
+                  setState(() {
+                    isLoading = true;
+                  });
                   if (_emailController.text.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(

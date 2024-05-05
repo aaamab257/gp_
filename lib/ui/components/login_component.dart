@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:graduation_project/constants.dart';
 import 'package:graduation_project/helpers/helpers.dart';
+import 'package:graduation_project/ui/components/contact_with_admin.dart';
 import 'package:graduation_project/ui/components/not_active_component.dart';
 import 'package:graduation_project/ui/screens/dashboard/dashboard_screen.dart';
 
@@ -20,6 +21,7 @@ class _LoginComponentState extends State<LoginComponent> {
   final AutovalidateMode _validate = AutovalidateMode.disabled;
   final GlobalKey<FormState> _key = GlobalKey();
   FirebaseAuth auth = FirebaseAuth.instance;
+  bool isLoading = false;
 
   Future<void> _login(String email, String pass) async {
     await auth
@@ -37,9 +39,16 @@ class _LoginComponentState extends State<LoginComponent> {
                     if (isActive) {
                       Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(
-                              builder: (context) =>  DashboardScreen(name:data['name'],uid:value.user!.uid)),
+                              builder: (context) => DashboardScreen(
+                                  name: data['name'], uid: value.user!.uid)),
                           (Route<dynamic> route) => false);
+                      setState(() {
+                        isLoading = false;
+                      });
                     } else {
+                      setState(() {
+                        isLoading = false;
+                      });
                       showModalBottomSheet(
                         isScrollControlled: true,
                         backgroundColor: Colors.white,
@@ -73,7 +82,7 @@ class _LoginComponentState extends State<LoginComponent> {
             child: Text(
               'Sign In',
               style: TextStyle(
-                  color: Color(COLOR_PRIMARY),
+                  color: COLOR_PRIMARY,
                   fontSize: 25.0,
                   fontWeight: FontWeight.bold),
             ),
@@ -90,14 +99,14 @@ class _LoginComponentState extends State<LoginComponent> {
                   controller: _emailController,
                   style: const TextStyle(fontSize: 18.0),
                   keyboardType: TextInputType.emailAddress,
-                  cursorColor: Color(COLOR_PRIMARY),
+                  cursorColor: COLOR_PRIMARY,
                   decoration: InputDecoration(
-                    contentPadding: EdgeInsets.only(left: 16, right: 16),
+                    contentPadding: const EdgeInsets.only(left: 16, right: 16),
                     hintText: 'Email Address',
                     focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(25.0),
                         borderSide: BorderSide(
-                            color: Color(COLOR_PRIMARY), width: 2.0)),
+                            color: COLOR_PRIMARY, width: 2.0)),
                     errorBorder: OutlineInputBorder(
                       borderSide: BorderSide(
                           color: Theme.of(context).colorScheme.error),
@@ -130,14 +139,14 @@ class _LoginComponentState extends State<LoginComponent> {
                   },
                   textInputAction: TextInputAction.done,
                   style: const TextStyle(fontSize: 18.0),
-                  cursorColor: Color(COLOR_PRIMARY),
+                  cursorColor: COLOR_PRIMARY,
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.only(left: 16, right: 16),
                     hintText: 'Password',
                     focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(25.0),
                         borderSide: BorderSide(
-                            color: Color(COLOR_PRIMARY), width: 2.0)),
+                            color: COLOR_PRIMARY, width: 2.0)),
                     errorBorder: OutlineInputBorder(
                       borderSide: BorderSide(
                           color: Theme.of(context).colorScheme.error),
@@ -160,7 +169,23 @@ class _LoginComponentState extends State<LoginComponent> {
             child: Align(
               alignment: Alignment.centerRight,
               child: GestureDetector(
-                onTap: () {},
+                onTap: () {
+                  showModalBottomSheet(
+                    isScrollControlled: true,
+                    backgroundColor: Colors.white,
+                    enableDrag: false,
+                    context: context,
+                    builder: (context) {
+                      return Padding(
+                        padding: MediaQuery.viewInsetsOf(context),
+                        child: SizedBox(
+                          height: MediaQuery.sizeOf(context).height * 0.6,
+                          child: const ContactWithAdmin(),
+                        ),
+                      );
+                    },
+                  ).then((value) => setState(() {}));
+                },
                 child: const Text(
                   'Forgot password?',
                   style: TextStyle(
@@ -177,16 +202,23 @@ class _LoginComponentState extends State<LoginComponent> {
               constraints: const BoxConstraints(minWidth: double.infinity),
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(COLOR_PRIMARY),
+                  backgroundColor: COLOR_PRIMARY,
                   padding: const EdgeInsets.only(top: 12, bottom: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25.0),
                     side: BorderSide(
-                      color: Color(COLOR_PRIMARY),
+                      color: COLOR_PRIMARY,
                     ),
                   ),
                 ),
-                child: const Text(
+                child:  isLoading ? const Row(
+                  mainAxisAlignment: MainAxisAlignment.center, 
+                  children:  [
+                    Text('Loading...', style: TextStyle(fontSize: 20,color: Colors.white,),), 
+                  SizedBox(width: 10,), 
+                   CircularProgressIndicator(color: Colors.white,), 
+                  ],
+                ) : const Text(
                   'Log In',
                   style: TextStyle(
                     fontSize: 20,
@@ -195,6 +227,9 @@ class _LoginComponentState extends State<LoginComponent> {
                   ),
                 ),
                 onPressed: () {
+                  setState(() {
+                    isLoading = true;
+                  });
                   if (_emailController.text.isEmpty) {
                   } else if (_passwordController.text.isEmpty) {
                   } else {

@@ -26,6 +26,7 @@ class _ReportScreenState extends State<ReportScreen> {
   File? _photo;
   final ImagePicker _picker = ImagePicker();
   FirebaseAuth auth = FirebaseAuth.instance;
+  bool isLoading = false;
 
   final TextEditingController _whatHappendCont = TextEditingController();
   bool isSwitched = false;
@@ -97,6 +98,9 @@ class _ReportScreenState extends State<ReportScreen> {
           'did you see?': isSwitched,
           'image_path': 'gs://gp-proj-30b79.appspot.com/$destination/file',
         }).then((value) => {
+              setState(() {
+                isLoading = false;
+              }),
               showModalBottomSheet(
                 isScrollControlled: true,
                 backgroundColor: Colors.white,
@@ -127,24 +131,46 @@ class _ReportScreenState extends State<ReportScreen> {
           constraints: const BoxConstraints(minWidth: double.infinity),
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Color(COLOR_PRIMARY),
+              backgroundColor: COLOR_PRIMARY,
               padding: const EdgeInsets.only(top: 12, bottom: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(25.0),
                 side: BorderSide(
-                  color: Color(COLOR_PRIMARY),
+                  color: COLOR_PRIMARY,
                 ),
               ),
             ),
-            child: const Text(
-              'Submit report',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
+            child: isLoading
+                ? const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Loading...',
+                        style: TextStyle(
+                          fontSize: 20,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(
+                        width: 10,
+                      ),
+                      CircularProgressIndicator(
+                        color: Colors.white,
+                      ),
+                    ],
+                  )
+                : const Text(
+                    'Submit report',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
             onPressed: () async {
+              setState(() {
+                isLoading = true;
+              });
               await uploadFile();
             },
           ),
@@ -174,8 +200,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 hintText: 'About accident',
                 focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(25.0),
-                    borderSide:
-                        BorderSide(color: Color(COLOR_PRIMARY), width: 2.0)),
+                    borderSide: BorderSide(color: COLOR_PRIMARY, width: 2.0)),
                 errorBorder: OutlineInputBorder(
                   borderSide:
                       BorderSide(color: Theme.of(context).colorScheme.error),
@@ -198,7 +223,7 @@ class _ReportScreenState extends State<ReportScreen> {
               minLines: 1, // <-- SEE HERE
               maxLines: 5,
               style: const TextStyle(fontSize: 18.0),
-              cursorColor: Color(COLOR_PRIMARY),
+              cursorColor: COLOR_PRIMARY,
             ),
           ),
           const SizedBox(
@@ -214,14 +239,17 @@ class _ReportScreenState extends State<ReportScreen> {
                   style: TextStyle(fontSize: 18),
                 ),
                 Transform.scale(
-                  scale: 2,
-                  child: Switch(
-                    onChanged: toggleSwitch,
-                    value: isSwitched,
-                    activeColor: Colors.blue,
-                    activeTrackColor: Colors.yellow,
-                    inactiveThumbColor: Colors.redAccent,
-                    inactiveTrackColor: Colors.orange,
+                  scale: 1,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Switch(
+                      onChanged: toggleSwitch,
+                      value: isSwitched,
+                      activeColor: Colors.blue,
+                      activeTrackColor: Colors.yellow,
+                      inactiveThumbColor: Colors.redAccent,
+                      inactiveTrackColor: Colors.orange,
+                    ),
                   ),
                 ),
               ],

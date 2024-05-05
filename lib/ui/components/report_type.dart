@@ -93,6 +93,31 @@ class ReportType extends StatelessWidget {
               ),
             ),
           ),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) =>  ReportScreen(title: 'Other accident',uid: uid , name:name)),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Card(
+                elevation: 20,
+                shadowColor: Colors.black,
+                color: Colors.greenAccent[100],
+                child: const Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Center(
+                    child: Text(
+                      'Other accident',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
