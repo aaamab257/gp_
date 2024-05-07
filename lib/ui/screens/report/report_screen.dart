@@ -2,12 +2,14 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:graduation_project/constants.dart';
 import 'package:graduation_project/ui/components/report_success.dart';
 
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:path/path.dart';
+import 'package:tflite_v2/tflite_v2.dart';
 
 class ReportScreen extends StatefulWidget {
   final String title;
@@ -26,6 +28,11 @@ class _ReportScreenState extends State<ReportScreen> {
   File? _photo;
   final ImagePicker _picker = ImagePicker();
   FirebaseAuth auth = FirebaseAuth.instance;
+  double _imageWidth = 0;
+  double _imageHeight = 0;
+  bool _busy = false;
+  File? _image;
+  List _recognitions = [];
   bool isLoading = false;
 
   final TextEditingController _whatHappendCont = TextEditingController();
@@ -33,8 +40,100 @@ class _ReportScreenState extends State<ReportScreen> {
   var textValue = '';
   @override
   void initState() {
-    print('Current User ================= ${auth.currentUser!.uid}');
     super.initState();
+    _busy = true;
+
+    loadModel().then((val) {
+      setState(() {
+        _busy = false;
+      });
+    });
+
+    super.initState();
+  }
+
+  loadModel() async {
+    Tflite.close();
+    try {
+      await Tflite.loadModel(
+        model: "assets/ssd_mobilenet.tflite",
+        labels: "assets/ssd_mobilenet.txt",
+      );
+    } on PlatformException {
+      print("Failed to load the model");
+    }
+  }
+
+  predictImage(File image) async {
+    // ignore: unnecessary_null_comparison
+    if (image == null) return;
+    await ssdMobileNet(image);
+
+    FileImage(image)
+        .resolve(const ImageConfiguration())
+        .addListener((ImageStreamListener((ImageInfo info, bool _) {
+          setState(() {
+            _imageWidth = info.image.width.toDouble();
+            _imageHeight = info.image.height.toDouble();
+          });
+        })));
+
+    setState(() {
+      _image = image;
+      _busy = false;
+    });
+  }
+
+  ssdMobileNet(File image) async {
+    var recognitions = await Tflite.detectObjectOnImage(
+        path: image.path, // required
+        imageMean: 127.5, // defaults to 127.5
+        imageStd: 127.5, // defaults to 127.5
+        threshold: 0.4, // defaults to 0.1
+        numResultsPerClass: 2, // defaults to 5
+        asynch: true // defaults to true
+        );
+
+    setState(() {
+      _recognitions = recognitions!;
+    });
+  }
+
+  List<Widget> renderBoxes(Size screen) {
+    // ignore: unnecessary_null_comparison
+    if (_recognitions == null) return [];
+    // ignore: unnecessary_null_comparison
+    if (_imageWidth == null || _imageHeight == null) return [];
+
+    double factorX = screen.width;
+    double factorY = _imageHeight / _imageHeight * screen.width;
+
+    Color blue = Colors.red;
+
+    return _recognitions.map((re) {
+      return Positioned(
+          left: re["rect"]["x"] * factorX,
+          top: re["rect"]["y"] * factorY,
+          width: re["rect"]["w"] * factorX,
+          height: re["rect"]["h"] * factorY,
+          child: ((re["confidenceInClass"] > 0.50))
+              ? Container(
+                  decoration: BoxDecoration(
+                      border: Border.all(
+                    color: blue,
+                    width: 3,
+                  )),
+                  child: Text(
+                    "${re["detectedClass"]} ${(re["confidenceInClass"] * 100).toStringAsFixed(0)}%",
+                    style: TextStyle(
+                      background: Paint()..color = blue,
+                      color: Colors.white,
+                      fontSize: 15,
+                    ),
+                  ),
+                )
+              : Container());
+    }).toList();
   }
 
   FirebaseFirestore reports = FirebaseFirestore.instance;
@@ -43,17 +142,22 @@ class _ReportScreenState extends State<ReportScreen> {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
 
     setState(() {
+      _busy = true;
       if (pickedFile != null) {
         _photo = File(pickedFile.path);
+        predictImage(_photo!);
         //uploadFile();
       } else {
         print('No image selected.');
       }
     });
+
+    
+    
   }
 
   Future imgFromCamera() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.camera);
+    var pickedFile = await _picker.pickImage(source: ImageSource.camera);
 
     setState(() {
       if (pickedFile != null) {
@@ -63,6 +167,10 @@ class _ReportScreenState extends State<ReportScreen> {
         print('No image selected.');
       }
     });
+    setState(() {
+      _busy = true;
+    });
+    predictImage(_photo!);
   }
 
   void toggleSwitch(bool value) {
@@ -124,6 +232,27 @@ class _ReportScreenState extends State<ReportScreen> {
       }
     }
 
+    Size size = MediaQuery.of(context).size;
+    List<Widget> stackChildren = [];
+
+    stackChildren.add(Positioned(
+      top: 0.0,
+      left: 0.0,
+      width: size.width,
+      // ignore: unnecessary_null_comparison
+      child:
+          // ignore: unnecessary_null_comparison
+          _image == null
+              ? const Text("No Image Selected")
+              : Image.file(_image!),
+    ));
+    stackChildren.addAll(renderBoxes(size));
+
+    if (_busy) {
+      stackChildren.add(const Center(
+        child: CircularProgressIndicator(),
+      ));
+    }
     return Scaffold(
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.only(right: 40.0, left: 40.0, bottom: 40),
@@ -297,6 +426,15 @@ class _ReportScreenState extends State<ReportScreen> {
               ),
             ),
           ),
+          const SizedBox(
+            height: 15,
+          ),
+          SizedBox(
+            height: 500 ,
+            child: Stack(
+              children: stackChildren,
+            ),
+          )
         ],
       ),
     );
