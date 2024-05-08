@@ -22,52 +22,62 @@ class _LoginComponentState extends State<LoginComponent> {
   final GlobalKey<FormState> _key = GlobalKey();
   FirebaseAuth auth = FirebaseAuth.instance;
   bool isLoading = false;
+  String error = '';
 
   Future<void> _login(String email, String pass) async {
-    await auth
-        .signInWithEmailAndPassword(email: email, password: pass)
-        .then((value) => {
-              if (value.user != null)
-                {
-                  FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(value.user!.uid)
-                      .get()
-                      .then((DocumentSnapshot doc) {
-                    final data = doc.data() as Map<String, dynamic>;
-                    bool isActive = data['isActive'];
-                    if (isActive) {
-                      Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(
-                              builder: (context) => DashboardScreen(
-                                  name: data['name'], uid: value.user!.uid)),
-                          (Route<dynamic> route) => false);
-                      setState(() {
-                        isLoading = false;
-                      });
-                    } else {
-                      setState(() {
-                        isLoading = false;
-                      });
-                      showModalBottomSheet(
-                        isScrollControlled: true,
-                        backgroundColor: Colors.white,
-                        enableDrag: false,
-                        context: context,
-                        builder: (context) {
-                          return Padding(
-                            padding: MediaQuery.viewInsetsOf(context),
-                            child: SizedBox(
-                              height: MediaQuery.sizeOf(context).height * 0.6,
-                              child: const NotActiveComponent(),
-                            ),
-                          );
-                        },
-                      ).then((value) => setState(() {}));
-                    }
-                  })
-                }
-            });
+    try {
+      await auth
+          .signInWithEmailAndPassword(email: email, password: pass)
+          .then((value) => {
+                if (value.user != null)
+                  {
+                    FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(value.user!.uid)
+                        .get()
+                        .then((DocumentSnapshot doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      bool isActive = data['isActive'];
+                      if (isActive) {
+                        Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                                builder: (context) => DashboardScreen(
+                                    name: data['name'], uid: value.user!.uid)),
+                            (Route<dynamic> route) => false);
+                        setState(() {
+                          isLoading = false;
+                        });
+                      } else {
+                        setState(() {
+                          isLoading = false;
+                        });
+                        showModalBottomSheet(
+                          isScrollControlled: true,
+                          backgroundColor: Colors.white,
+                          enableDrag: false,
+                          context: context,
+                          builder: (context) {
+                            return Padding(
+                              padding: MediaQuery.viewInsetsOf(context),
+                              child: SizedBox(
+                                height: MediaQuery.sizeOf(context).height * 0.6,
+                                child: const NotActiveComponent(),
+                              ),
+                            );
+                          },
+                        ).then((value) => setState(() {}));
+                      }
+                    })
+                  }
+              });
+    } on FirebaseAuthException catch (e) {
+      print('Failed with error code: ${e.code}');
+      isLoading = false;
+      setState(() {
+        error = e.code.toString();
+      });
+      print(e.message);
+    }
   }
 
   @override
@@ -105,8 +115,8 @@ class _LoginComponentState extends State<LoginComponent> {
                     hintText: 'Email Address',
                     focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(25.0),
-                        borderSide: BorderSide(
-                            color: COLOR_PRIMARY, width: 2.0)),
+                        borderSide:
+                            BorderSide(color: COLOR_PRIMARY, width: 2.0)),
                     errorBorder: OutlineInputBorder(
                       borderSide: BorderSide(
                           color: Theme.of(context).colorScheme.error),
@@ -145,8 +155,8 @@ class _LoginComponentState extends State<LoginComponent> {
                     hintText: 'Password',
                     focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(25.0),
-                        borderSide: BorderSide(
-                            color: COLOR_PRIMARY, width: 2.0)),
+                        borderSide:
+                            BorderSide(color: COLOR_PRIMARY, width: 2.0)),
                     errorBorder: OutlineInputBorder(
                       borderSide: BorderSide(
                           color: Theme.of(context).colorScheme.error),
@@ -211,21 +221,33 @@ class _LoginComponentState extends State<LoginComponent> {
                     ),
                   ),
                 ),
-                child:  isLoading ? const Row(
-                  mainAxisAlignment: MainAxisAlignment.center, 
-                  children:  [
-                    Text('Loading...', style: TextStyle(fontSize: 20,color: Colors.white,),), 
-                  SizedBox(width: 10,), 
-                   CircularProgressIndicator(color: Colors.white,), 
-                  ],
-                ) : const Text(
-                  'Log In',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+                child: isLoading
+                    ? const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Loading...',
+                            style: TextStyle(
+                              fontSize: 20,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(
+                            width: 10,
+                          ),
+                          CircularProgressIndicator(
+                            color: Colors.white,
+                          ),
+                        ],
+                      )
+                    : const Text(
+                        'Log In',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
                 onPressed: () {
                   setState(() {
                     isLoading = true;
@@ -238,6 +260,16 @@ class _LoginComponentState extends State<LoginComponent> {
                   }
                 },
               ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 10.0, right: 10.0, left: 10.0),
+            child: Text(
+              error,
+              style: const TextStyle(
+                  color: Colors.red,
+                  fontSize: 25.0,
+                  fontWeight: FontWeight.bold),
             ),
           ),
         ],

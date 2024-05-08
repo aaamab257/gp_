@@ -3,13 +3,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:graduation_project/constants.dart';
 import 'package:graduation_project/ui/components/report_success.dart';
 
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:path/path.dart';
-import 'package:tflite_v2/tflite_v2.dart';
 
 class ReportScreen extends StatefulWidget {
   final String title;
@@ -28,115 +30,68 @@ class _ReportScreenState extends State<ReportScreen> {
   File? _photo;
   final ImagePicker _picker = ImagePicker();
   FirebaseAuth auth = FirebaseAuth.instance;
-  double _imageWidth = 0;
-  double _imageHeight = 0;
+  String? _currentAddress;
+  Position? _currentPosition;
   bool _busy = false;
   File? _image;
-  List _recognitions = [];
+
   bool isLoading = false;
+  String responseText = '';
 
   final TextEditingController _whatHappendCont = TextEditingController();
   bool isSwitched = false;
   var textValue = '';
-  @override
-  void initState() {
-    super.initState();
-    _busy = true;
+  final apiKey =
+      Platform.environment['AIzaSyB1SiI7ZJrx48pctwPIlwaakN50VgGTkgs'];
 
-    loadModel().then((val) {
-      setState(() {
-        _busy = false;
-      });
-    });
-
-    super.initState();
-  }
-
-  loadModel() async {
-    Tflite.close();
+  Future<void> getTextFromImage(File photo, String message) async {
+    isLoading = true;
+    print('APIKET ======================= $apiKey');
     try {
-      await Tflite.loadModel(
-        model: "assets/ssd_mobilenet.tflite",
-        labels: "assets/ssd_mobilenet.txt",
-      );
-    } on PlatformException {
-      print("Failed to load the model");
+      final model = GenerativeModel(
+          model: 'gemini-pro-vision',
+          apiKey: 'AIzaSyB1SiI7ZJrx48pctwPIlwaakN50VgGTkgs');
+
+      final prompt = TextPart(message);
+      final imageParts = [
+        DataPart('image/jpeg', await photo.readAsBytes()),
+      ];
+      final response = await model.generateContent([
+        Content.multi([prompt, ...imageParts])
+      ]);
+      print(response.text.toString());
+      setState(() {
+        responseText = response.text.toString();
+        isLoading = false;
+      });
+    } catch (e) {
+      print("Error is $e");
     }
   }
 
-  predictImage(File image) async {
-    // ignore: unnecessary_null_comparison
-    if (image == null) return;
-    await ssdMobileNet(image);
+  @override
+  void initState() {
+    super.initState();
 
-    FileImage(image)
-        .resolve(const ImageConfiguration())
-        .addListener((ImageStreamListener((ImageInfo info, bool _) {
-          setState(() {
-            _imageWidth = info.image.width.toDouble();
-            _imageHeight = info.image.height.toDouble();
-          });
-        })));
+    _busy = true;
 
-    setState(() {
-      _image = image;
-      _busy = false;
-    });
-  }
-
-  ssdMobileNet(File image) async {
-    var recognitions = await Tflite.detectObjectOnImage(
-        path: image.path, // required
-        imageMean: 127.5, // defaults to 127.5
-        imageStd: 127.5, // defaults to 127.5
-        threshold: 0.4, // defaults to 0.1
-        numResultsPerClass: 2, // defaults to 5
-        asynch: true // defaults to true
-        );
-
-    setState(() {
-      _recognitions = recognitions!;
-    });
-  }
-
-  List<Widget> renderBoxes(Size screen) {
-    // ignore: unnecessary_null_comparison
-    if (_recognitions == null) return [];
-    // ignore: unnecessary_null_comparison
-    if (_imageWidth == null || _imageHeight == null) return [];
-
-    double factorX = screen.width;
-    double factorY = _imageHeight / _imageHeight * screen.width;
-
-    Color blue = Colors.red;
-
-    return _recognitions.map((re) {
-      return Positioned(
-          left: re["rect"]["x"] * factorX,
-          top: re["rect"]["y"] * factorY,
-          width: re["rect"]["w"] * factorX,
-          height: re["rect"]["h"] * factorY,
-          child: ((re["confidenceInClass"] > 0.50))
-              ? Container(
-                  decoration: BoxDecoration(
-                      border: Border.all(
-                    color: blue,
-                    width: 3,
-                  )),
-                  child: Text(
-                    "${re["detectedClass"]} ${(re["confidenceInClass"] * 100).toStringAsFixed(0)}%",
-                    style: TextStyle(
-                      background: Paint()..color = blue,
-                      color: Colors.white,
-                      fontSize: 15,
-                    ),
-                  ),
-                )
-              : Container());
-    }).toList();
+    super.initState();
   }
 
   FirebaseFirestore reports = FirebaseFirestore.instance;
+  Future<void> _getAddressFromLatLng(Position position) async {
+    await placemarkFromCoordinates(
+            _currentPosition!.latitude, _currentPosition!.longitude)
+        .then((List<Placemark> placemarks) {
+      Placemark place = placemarks[0];
+      setState(() {
+        _currentAddress =
+            '${place.street}, ${place.subLocality},${place.subAdministrativeArea}, ${place.postalCode}';
+      });
+    }).catchError((e) {
+      debugPrint(e);
+    });
+  }
 
   Future imgFromGallery() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
@@ -145,15 +100,13 @@ class _ReportScreenState extends State<ReportScreen> {
       _busy = true;
       if (pickedFile != null) {
         _photo = File(pickedFile.path);
-        predictImage(_photo!);
+        getTextFromImage(_photo!,
+            "What is the accident in this image ? , How dangerous is it?");
         //uploadFile();
       } else {
         print('No image selected.');
       }
     });
-
-    
-    
   }
 
   Future imgFromCamera() async {
@@ -162,7 +115,8 @@ class _ReportScreenState extends State<ReportScreen> {
     setState(() {
       if (pickedFile != null) {
         _photo = File(pickedFile.path);
-        //uploadFile();
+        getTextFromImage(_photo!,
+            "What is the accident in this image ? , How dangerous is it?");
       } else {
         print('No image selected.');
       }
@@ -170,7 +124,6 @@ class _ReportScreenState extends State<ReportScreen> {
     setState(() {
       _busy = true;
     });
-    predictImage(_photo!);
   }
 
   void toggleSwitch(bool value) {
@@ -189,7 +142,40 @@ class _ReportScreenState extends State<ReportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Future<bool> _handleLocationPermission() async {
+      bool serviceEnabled;
+      LocationPermission permission;
+
+      serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Location services are disabled. Please enable the services')));
+        return false;
+      }
+      permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Location permissions are denied')));
+          return false;
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Location permissions are permanently denied, we cannot request permissions.')));
+        return false;
+      }
+      return true;
+    }
+
     Future uploadFile() async {
+      await _handleLocationPermission();
+      _currentPosition = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      await _getAddressFromLatLng(_currentPosition!);
       if (_photo == null) return;
       final fileName = basename(_photo!.path);
       final destination = 'files/$fileName';
@@ -205,6 +191,8 @@ class _ReportScreenState extends State<ReportScreen> {
           'what happend?': _whatHappendCont.text,
           'did you see?': isSwitched,
           'image_path': 'gs://gp-proj-30b79.appspot.com/$destination/file',
+          'ai_detection': responseText,
+          'address':_currentAddress,
         }).then((value) => {
               setState(() {
                 isLoading = false;
@@ -246,7 +234,6 @@ class _ReportScreenState extends State<ReportScreen> {
               ? const Text("No Image Selected")
               : Image.file(_image!),
     ));
-    stackChildren.addAll(renderBoxes(size));
 
     if (_busy) {
       stackChildren.add(const Center(
@@ -429,12 +416,19 @@ class _ReportScreenState extends State<ReportScreen> {
           const SizedBox(
             height: 15,
           ),
-          SizedBox(
-            height: 500 ,
-            child: Stack(
-              children: stackChildren,
+          // SizedBox(
+          //   height: 500,
+          //   child: Stack(
+          //     children: stackChildren,
+          //   ),
+          // )
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(
+              responseText,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-          )
+          ),
         ],
       ),
     );

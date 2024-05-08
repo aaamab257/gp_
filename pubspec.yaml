@@ -44,6 +44,9 @@ dependencies:
   firebase_storage: ^11.7.4
   camera: ^0.10.5+7
   tflite_v2: ^1.0.0
+  google_generative_ai: any
+  geolocator: ^11.0.0
+  geocoding: ^3.0.0
   
   
   
@@ -51,8 +54,8 @@ dependencies:
 
 
 flutter_native_splash:
-  color: "#071b5d"
-  image: 'assets/images/Icon.png'
+  color: "#FFFFFF"
+  image: 'assets/images/app.png'
   android: true
   ios: true
   
@@ -89,7 +92,9 @@ flutter:
     - assets/
     - assets/images/
     
-
+dependency_overrides:
+  google_generative_ai:
+    path: pkgs/google_generative_ai
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware
 

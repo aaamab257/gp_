@@ -43,7 +43,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
             ),
             Image.asset(
-              'assets/images/Icon.png',
+              'assets/images/app.png',
               scale: 8,
             ),
             Row(
